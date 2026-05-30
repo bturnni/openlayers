@@ -1195,6 +1195,7 @@ attribute vec2 a_hitColor;
 
 varying vec2 v_texCoord;
 varying vec4 v_hitColor;
+varying float v_gamma;
 
 ${this.attributes_
   .map(
@@ -1206,6 +1207,9 @@ ${this.vertexShaderFunctions_.join('\n')}
 void main(void) {
   float refSize = 128.0; // GlyphAtlas reference em size
   float sizeRatio = (${this.textSizeExpression_}) / refSize;
+  // SDF antialiasing band, sized so the smoothstep edge spans ~1 device pixel at any
+  // text size / pixel ratio (GlyphAtlas SDF radius = 12 px at the 128 px reference em).
+  v_gamma = 0.5 / (12.0 * sizeRatio * u_pixelRatio);
   vec2 local01 = a_localPosition * 0.5 + 0.5;
   vec2 cornerPx = (a_glyphOffset + a_glyphSize * local01) * sizeRatio;
   vec4 anchorClip = u_projectionMatrix * vec4(a_anchor, 0.0, 1.0);
@@ -1238,6 +1242,7 @@ ${this.uniforms_.map((uniform) => `uniform ${uniform.type} ${uniform.name};`).jo
 uniform sampler2D u_atlasTexture;
 varying vec2 v_texCoord;
 varying vec4 v_hitColor;
+varying float v_gamma;
 ${this.attributes_
   .map(
     (attribute) => `varying ${attribute.varyingType} ${attribute.varyingName};`,
@@ -1253,8 +1258,8 @@ ${this.attributes_
   )
   .join('\n')}
   float dist = texture2D(u_atlasTexture, v_texCoord).a;
-  float smoothing = 0.1;
-  float threshold = 0.6;
+  float smoothing = v_gamma;
+  float threshold = 0.75; // TinySDF encodes the glyph edge at 1.0 - cutoff (cutoff = 0.25)
   vec4 fillColor = ${this.textColorExpression_};
   vec4 outlineColor = ${this.textOutlineColorExpression_};
   float outlineWidth = (${this.textOutlineWidthExpression_}) / 24.0;
