@@ -272,8 +272,22 @@ export function generateTextRenderInstructions(
   transform,
 ) {
   const customAttrNames = Object.keys(customAttributes);
-  /** @type {Array<number>} */
-  const out = [];
+
+  // floats contributed by custom attributes per glyph (fixed for this style)
+  let customFloatCount = 0;
+  for (let n = 0; n < customAttrNames.length; n++) {
+    customFloatCount += customAttributes[customAttrNames[n]].size || 1;
+  }
+  // 10 fixed floats: anchorXY, offsetXY, sizeWH, atlasUv (4)
+  const stride = 10 + customFloatCount;
+
+  // Pass 1: resolve text + lay out glyphs (layout is cached, so this is cheap on
+  // repeated labels) to count total glyphs and stage per-feature records. This
+  // lets us allocate the output Float32Array once and fill it by index, avoiding
+  // a multi-million-element intermediate Array and a Float32Array.from copy.
+  /** @type {Array<{anchorX: number, anchorY: number, glyphs: Array<import('./GlyphLayout.js').LaidOutGlyph>, customValues: Array<number>}>} */
+  const records = [];
+  let totalGlyphs = 0;
   const tmpAnchor = [];
 
   for (const uid in textBatch.entries) {
@@ -283,12 +297,14 @@ export function generateTextRenderInstructions(
     if (!text) {
       continue;
     }
+    const layout = layoutGlyphs(text, atlas);
+    if (layout.glyphs.length === 0) {
+      continue;
+    }
     const flatCoords = entry.flatCoordss[0];
     tmpAnchor[0] = flatCoords[0];
     tmpAnchor[1] = flatCoords[1];
     applyTransform(transform, tmpAnchor);
-    const anchorX = tmpAnchor[0];
-    const anchorY = tmpAnchor[1];
 
     // gather custom attribute values once per feature
     // This mirrors the coercion done by pushCustomAttributesInRenderInstructions
@@ -313,26 +329,37 @@ export function generateTextRenderInstructions(
       }
     }
 
-    const layout = layoutGlyphs(text, atlas);
-    for (let g = 0; g < layout.glyphs.length; g++) {
-      const glyph = layout.glyphs[g];
-      out.push(
-        anchorX,
-        anchorY,
-        glyph.offsetPx[0],
-        glyph.offsetPx[1],
-        glyph.sizePx[0],
-        glyph.sizePx[1],
-        glyph.atlasUv[0],
-        glyph.atlasUv[1],
-        glyph.atlasUv[2],
-        glyph.atlasUv[3],
-      );
+    records.push({
+      anchorX: tmpAnchor[0],
+      anchorY: tmpAnchor[1],
+      glyphs: layout.glyphs,
+      customValues,
+    });
+    totalGlyphs += layout.glyphs.length;
+  }
+
+  // Pass 2: fill the preallocated buffer by index.
+  const out = new Float32Array(totalGlyphs * stride);
+  let p = 0;
+  for (let r = 0; r < records.length; r++) {
+    const {anchorX, anchorY, glyphs, customValues} = records[r];
+    for (let g = 0; g < glyphs.length; g++) {
+      const glyph = glyphs[g];
+      out[p++] = anchorX;
+      out[p++] = anchorY;
+      out[p++] = glyph.offsetPx[0];
+      out[p++] = glyph.offsetPx[1];
+      out[p++] = glyph.sizePx[0];
+      out[p++] = glyph.sizePx[1];
+      out[p++] = glyph.atlasUv[0];
+      out[p++] = glyph.atlasUv[1];
+      out[p++] = glyph.atlasUv[2];
+      out[p++] = glyph.atlasUv[3];
       for (let k = 0; k < customValues.length; k++) {
-        out.push(customValues[k]);
+        out[p++] = customValues[k];
       }
     }
   }
 
-  return Float32Array.from(out);
+  return out;
 }

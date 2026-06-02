@@ -377,7 +377,9 @@ class VectorStyleRenderer {
        * @return {string} Resolved label.
        */
       this.resolveText_ = (feature) => {
-        evalContext.properties = feature.getProperties();
+        // read the live properties object (no per-feature clone); the evaluator
+        // only reads from it
+        evalContext.properties = feature.getPropertiesInternal() || {};
         try {
           const value = textEvaluator(evalContext);
           return value === null || value === undefined ? '' : String(value);

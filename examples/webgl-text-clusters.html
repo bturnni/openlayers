@@ -1,0 +1,15 @@
+---
+layout: example.html
+title: WebGL Text Clusters
+shortdesc: Label clustered points with a single WebGLVectorLayer.
+experimental: true
+docs: >
+  This example clusters point features with `ol/source/Cluster` and renders both the
+  cluster circle and its count label from one `WebGLVectorLayer`. Because the flat WebGL
+  style cannot read the cluster `features` array length, a custom `createCluster` stores a
+  numeric `count` property (driving the `circle-radius` and `circle-fill-color` expressions)
+  and a `label` string (the count, or the city name when a point is on its own). Zooming
+  re-clusters the source, which rebuilds the WebGL buffers.
+tags: "webgl, text, vector, cluster, clusters"
+---
+<div id="map" class="map"></div>
