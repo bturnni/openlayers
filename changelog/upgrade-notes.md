@@ -2,6 +2,37 @@
 
 ### Next Release
 
+#### Deprecation of `ol/source/BingMaps`
+
+Bing Maps for Enterprise is being retired on June 30th, 2028. The `BingMaps` source
+has been deprecated. Use `ol/source/ImageTile` with the Azure Maps tile API instead.
+See the [azure-maps example](https://openlayers.org/en/latest/examples/azure-maps.html) for guidance.
+
+```js
+// Before
+new BingMaps({
+  key: 'YOUR_BING_MAPS_KEY',
+  imagerySet: 'RoadOnDemand',
+})
+
+// After
+new ImageTile({
+  url: `https://atlas.microsoft.com/map/tile?subscription-key=YOUR_AZURE_MAPS_KEY&api-version=2.0&tilesetId=microsoft.base.road&zoom={z}&x={x}&y={y}&tileSize=256`,
+  attributions: `© ${new Date().getFullYear()} TomTom, Microsoft`,
+})
+```
+
+#### `createFromCapabilitiesMatrixSet` now respects `TileMatrixSetLimits`
+
+When a `matrixLimits` array is passed to `createFromCapabilitiesMatrixSet`, the returned
+tile grid will now restrict tile requests to the `MinTileRow`/`MaxTileRow`/`MinTileCol`/`MaxTileCol`
+bounds advertised for each zoom level. Previously those bounds were ignored and the full
+matrix extent was used, causing tile requests outside the layer's data extent.
+
+If you were passing `matrixLimits` only to filter zoom levels and relied on the full matrix
+range being loaded at each level, you can omit the `matrixLimits` argument or pass an empty
+array to restore the previous behavior.
+
 ### 10.7.0
 
 #### Deprecation of ol/array's stableSort

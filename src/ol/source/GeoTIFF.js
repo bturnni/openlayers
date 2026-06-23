@@ -683,6 +683,9 @@ class GeoTIFFSource extends DataTile {
         );
       }
 
+      images.sort((i1, i2) => i2.getWidth() - i1.getWidth());
+      masks.sort((m1, m2) => m2.getWidth() - m1.getWidth());
+
       let sourceExtent;
       let sourceOrigin;
       const sourceTileSizes = new Array(imageCount);
@@ -862,6 +865,7 @@ class GeoTIFFSource extends DataTile {
       bandCount += samplesPerPixel[sourceIndex];
     }
     this.bandCount = bandCount;
+    this.nodataBandIndex = this.addAlpha_ ? this.bandCount : undefined;
 
     const tileGrid = new TileGrid({
       extent: extent,

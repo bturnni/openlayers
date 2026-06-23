@@ -72,9 +72,9 @@ export const Attributes = {
 
 /**
  * @typedef {Object} WebGLBuffers
- * @property {WebGLArrayBufferSet} polygonBuffers Array containing indices and vertices buffers for polygons
- * @property {WebGLArrayBufferSet} lineStringBuffers Array containing indices and vertices buffers for line strings
- * @property {WebGLArrayBufferSet} pointBuffers Array containing indices and vertices buffers for points
+ * @property {WebGLArrayBufferSet|null} polygonBuffers Array containing indices and vertices buffers for polygons
+ * @property {WebGLArrayBufferSet|null} lineStringBuffers Array containing indices and vertices buffers for line strings
+ * @property {WebGLArrayBufferSet|null} pointBuffers Array containing indices and vertices buffers for points
  * @property {WebGLArrayBufferSet} [textBuffers] Array containing indices and vertices buffers for text; undefined/null if no text
  * @property {import("../../transform.js").Transform} invertVerticesTransform Inverse of the transform applied when generating buffers
  */
@@ -405,11 +405,22 @@ class VectorStyleRenderer {
   /**
    * @param {import('./MixedGeometryBatch.js').default} geometryBatch Geometry batch
    * @param {import("../../transform.js").Transform} transform Transform to apply to coordinates
-   * @return {Promise<WebGLBuffers|null>} A promise resolving to WebGL buffers; returns null if buffers are empty
+   * @return {Promise<WebGLBuffers>} A promise resolving to WebGL buffers; buffer sets are set to `null` if nothing to render
    */
   async generateBuffers(geometryBatch, transform) {
+    // also return the inverse of the transform that was applied when generating buffers
+    const invertVerticesTransform = makeInverseTransform(
+      createTransform(),
+      transform,
+    );
+
     if (geometryBatch.isEmpty()) {
-      return null;
+      return {
+        polygonBuffers: null,
+        lineStringBuffers: null,
+        pointBuffers: null,
+        invertVerticesTransform: invertVerticesTransform,
+      };
     }
     const renderInstructions = this.generateRenderInstructions_(
       geometryBatch,
@@ -438,11 +449,6 @@ class VectorStyleRenderer {
           transform,
         ),
       ]);
-    // also return the inverse of the transform that was applied when generating buffers
-    const invertVerticesTransform = makeInverseTransform(
-      createTransform(),
-      transform,
-    );
     return {
       polygonBuffers: polygonBuffers,
       lineStringBuffers: lineStringBuffers,
@@ -606,6 +612,7 @@ class VectorStyleRenderer {
   render(buffers, frameState, preRenderCallback, skipText) {
     for (const renderPass of this.renderPasses_) {
       renderPass.fillRenderPass &&
+        buffers.polygonBuffers &&
         this.renderInternal_(
           buffers.polygonBuffers[0],
           buffers.polygonBuffers[1],
@@ -615,6 +622,7 @@ class VectorStyleRenderer {
           preRenderCallback,
         );
       renderPass.strokeRenderPass &&
+        buffers.lineStringBuffers &&
         this.renderInternal_(
           buffers.lineStringBuffers[0],
           buffers.lineStringBuffers[1],
@@ -624,6 +632,7 @@ class VectorStyleRenderer {
           preRenderCallback,
         );
       renderPass.symbolRenderPass &&
+        buffers.pointBuffers &&
         this.renderInternal_(
           buffers.pointBuffers[0],
           buffers.pointBuffers[1],
