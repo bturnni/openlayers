@@ -304,8 +304,6 @@
     "../src/ol/webgl/TileTexture.js",
     "../src/ol/worker/webgl.js",
     "../src/ol/xml.js",
-    "../src/ol/layer/WebGLText.js",
-    "../src/ol/renderer/webgl/TextLayer.js",
     "../src/ol/render/webgl/GlyphAtlas.js",
     "../src/ol/render/webgl/GlyphLayout.js"
   ]
